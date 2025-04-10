@@ -1,21 +1,271 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Query Generator</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.5;
+        }
+
+        .container {
+            background-color: var(--card-background);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin: 1rem 0;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .result-container {
+            margin-top: 2rem;
+        }
+
+        .query-box {
+            background-color: #f1f5f9;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-family: 'Monaco', 'Consolas', monospace;
+            white-space: pre-wrap;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: #f8fafc;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .error-message {
+            color: #dc2626;
+            padding: 1rem;
+            background-color: #fee2e2;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .loading::after {
+            content: "Generating query...";
+            color: var(--primary-color);
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: "Generating query."; }
+            40% { content: "Generating query.."; }
+            60% { content: "Generating query..."; }
+            80%, 100% { content: "Generating query...."; }
+        }
+    </style>
+</head>
 <body>
-    <input type="text" id="question" placeholder="Ask a question...">
-    <button onclick="ask()">Ask</button>
-    <pre id="result"></pre>
+    <div class="container">
+        <h1>SQL Query Generator</h1>
+        <p>Ask a question about the student information system database:</p>
+        <textarea id="question" placeholder="e.g., Show me all students with marks above 85"></textarea>
+        <button onclick="generateQuery()">Generate Query</button>
+        <div id="loading" class="loading"></div>
+        <div id="result" class="result-container"></div>
+    </div>
 
     <script>
-        async function ask() {
-            const question = document.getElementById("question").value;
-            const response = await fetch("/query", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ question: question })
+        function formatTableData(data) {
+            // Check if data is a string (Python tuple representation)
+            if (typeof data === 'string') {
+                try {
+                    // Remove the outer brackets and split by commas
+                    const cleanData = data.replace(/^\[|\]$/g, '');
+                    // Split by '), (' to separate tuples
+                    const tuples = cleanData.split('), (').map(tuple => {
+                        // Remove parentheses and split by comma
+                        return tuple.replace(/^\(|\)$/g, '').split(',').map(item => {
+                            // Remove quotes and trim whitespace
+                            return item.trim().replace(/^'|'$/g, '');
+                        });
+                    });
+                    
+                    // If we have data, create headers and rows
+                    if (tuples.length > 0) {
+                        // For single column results, use "Result" as header
+                        const headers = tuples[0].length === 1 ? ['Result'] : 
+                            Array.from({length: tuples[0].length}, (_, i) => `Column ${i + 1}`);
+                        const rows = tuples;
+                        return { headers, rows };
+                    }
+                } catch (e) {
+                    console.error('Error parsing tuple data:', e);
+                }
+            }
+            
+            // Fallback to original object-based format
+            if (Array.isArray(data) && data.length > 0) {
+                const headers = Object.keys(data[0]);
+                const rows = data.map(row => headers.map(header => row[header]));
+                return { headers, rows };
+            }
+            
+            return { headers: [], rows: [] };
+        }
+
+        function createTable(headers, rows) {
+            const table = document.createElement('table');
+            
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
             });
-            const data = await response.json();
-            document.getElementById("result").innerHTML = 
-                `SQL: ${data.query}\nResult: ${data.result}`;
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create body
+            const tbody = document.createElement('tbody');
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            return table;
+        }
+
+        async function generateQuery() {
+            const question = document.getElementById('question').value;
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+            
+            if (!question.trim()) {
+                resultDiv.innerHTML = '<div class="error-message">Please enter a question</div>';
+                return;
+            }
+
+            loadingDiv.style.display = 'block';
+            resultDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                const { headers, rows } = formatTableData(data.result);
+                
+                resultDiv.innerHTML = `
+                    <h3>Generated SQL Query:</h3>
+                    <div class="query-box">${data.query}</div>
+                    <h3>Results:</h3>
+                    <div class="table-container"></div>
+                `;
+
+                const tableContainer = resultDiv.querySelector('.table-container');
+                const table = createTable(headers, rows);
+                tableContainer.appendChild(table);
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
         }
     </script>
 </body>
