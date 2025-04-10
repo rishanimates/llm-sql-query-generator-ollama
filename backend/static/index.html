@@ -1,86 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SQL Query Generator</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        textarea {
-            width: 100%;
-            height: 100px;
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            resize: vertical;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        pre {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
-            overflow-x: auto;
-        }
-    </style>
-</head>
+<html>
 <body>
-    <div class="container">
-        <h1>SQL Query Generator</h1>
-        <p>Ask a question about the student information system database:</p>
-        <textarea id="question" placeholder="e.g., Show me all students with marks above 85"></textarea>
-        <button onclick="generateQuery()">Generate Query</button>
-        <div id="result" style="margin-top: 20px;"></div>
-    </div>
+    <input type="text" id="question" placeholder="Ask a question...">
+    <button onclick="ask()">Ask</button>
+    <pre id="result"></pre>
 
     <script>
-        async function generateQuery() {
-            const question = document.getElementById('question').value;
-            const resultDiv = document.getElementById('result');
-            
-            try {
-                const response = await fetch('/query', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ question }),
-                });
-                
-                const data = await response.json();
-                
-                resultDiv.innerHTML = `
-                    <h3>Generated SQL Query:</h3>
-                    <pre>${data.query}</pre>
-                    <h3>Result:</h3>
-                    <pre>${JSON.stringify(data.result, null, 2)}</pre>
-                `;
-            } catch (error) {
-                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-            }
+        async function ask() {
+            const question = document.getElementById("question").value;
+            const response = await fetch("/query", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: question })
+            });
+            const data = await response.json();
+            document.getElementById("result").innerHTML = 
+                `SQL: ${data.query}\nResult: ${data.result}`;
         }
     </script>
 </body>
-</html> 
+</html>
