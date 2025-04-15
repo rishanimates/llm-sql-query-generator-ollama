@@ -44,7 +44,9 @@ A web application that converts natural language questions into SQL queries usin
 ## Running the Application
 
 1. Make sure Ollama is running with the mistral model:
+   ```Model is 4.1 GB in file size. 
    ```bash
+   ollama pull mistral 
    ollama run mistral
    ```
 

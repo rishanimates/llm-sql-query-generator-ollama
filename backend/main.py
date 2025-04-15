@@ -8,7 +8,7 @@ from langchain_community.utilities import SQLDatabase
 
 app = FastAPI()
 
-# Enable CORS
+# Enable CORSœ
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 # Database setup
-db = SQLDatabase.from_uri("sqlite:////Users/rhushirajpatil/development/LLM/db/sis.db")
+db = SQLDatabase.from_uri("sqlite:///D:/development/llm/llm-sql-query-generator-ollama/db/sis.db")
 llm = OllamaLLM(model="mistral")
 
 class QueryRequest(BaseModel):
